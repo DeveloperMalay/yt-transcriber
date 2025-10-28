@@ -1,4 +1,5 @@
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import TranscriptsDisabled, VideoUnavailable, NoTranscriptFound
 from urllib.parse import urlparse, parse_qs
 import sys
 
@@ -24,24 +25,36 @@ if __name__ == "__main__":
     
     try:
         api = YouTubeTranscriptApi()
-        
+
         # List available transcripts
         transcript_list = api.list(video_id)
-        print(f"Available transcripts: {[t.language_code for t in transcript_list]}")
-        
-        # Try to get English transcript, fallback to any available
+        available_langs = [t.language_code for t in transcript_list]
+        print(f"Available transcripts: {available_langs}\n")
+
+        # Try to get transcript with preferred languages
         try:
             transcript_data = api.fetch(video_id, languages=['en'])
-            print("Using English transcript")
-        except:
+            print("Using English transcript\n")
+        except Exception as e:
+            print(f"English transcript not available, trying first available: {e}")
+            # Try getting any available transcript
             transcript_data = api.fetch(video_id)
-            print("Using auto-detected language transcript")
-        
+            print("Using auto-detected language transcript\n")
+
+        # Print the transcript
         for seg in transcript_data:
             start = seg.start
             text = seg.text
             print(f"[{start:7.2f}] {text}")
             
+    except TranscriptsDisabled:
+        print("Error: Transcripts are disabled for this video")
+    except VideoUnavailable:
+        print("Error: Video is unavailable")
+    except NoTranscriptFound:
+        print("Error: No transcript found for this video")
     except Exception as e:
         print(f"Error fetching transcript: {e}")
         print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
